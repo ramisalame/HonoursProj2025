@@ -238,7 +238,7 @@ def classify_domain(url: str, fallback_title: str = "") -> str:
 
 
 #Fetches the title of the url
-def fetch_title_quick(url: str, timeout=10) -> str:
+def fetch_title_of_url(url: str, timeout=10) -> str:
     try:
         r = requests.get(
             url,
@@ -314,7 +314,7 @@ def google_reverse_image_exact(image_url: str, driver) -> list[dict]:
 
     out = []
     for link in links:
-        title = fetch_title_quick(link)
+        title = fetch_title_of_url(link)
         label = classify_domain(link, fallback_title=title)
 
         match_image_link = ""
