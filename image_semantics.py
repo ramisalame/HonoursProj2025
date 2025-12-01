@@ -32,11 +32,11 @@ STOPWORDS = {
 }
 
 #Regex for tokenization
-TOKEN_RE = re.compile(r"[A-Za-z0-9][A-Za-z0-9\-']{1,}")
+TOKEN_REGEX = re.compile(r"[A-Za-z0-9][A-Za-z0-9\-']{1,}")
 
 
 def tokenize(text: str):
-    return [m.group(0) for m in TOKEN_RE.finditer(text or "")]
+    return [m.group(0) for m in TOKEN_REGEX.finditer(text or "")]
 
 
 #Normalize tokens (lowercase, remove some characters, collapse repeated letters)
@@ -60,7 +60,7 @@ def remove_duplicates(seq):
 # -------------------------------------------------------------------
 #Use gpu for processing if available, otherwise CPU
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
-BLIP = BLIP_PROC = _CLIP = _CLIP_PROC = None
+BLIP = BLIP_PROC = CLIP = CLIP_PROC = None
 
 SENT_EMB_MODEL = None
 CAT_EMB = None  # for subreddit categories
@@ -69,17 +69,17 @@ CANONICAL_EMB = None  # for generalized meme tags
 
 #Load blip/clip models for image processing
 def load_vision_models():
-    global BLIP, BLIP_PROC, _CLIP, _CLIP_PROC
+    global BLIP, BLIP_PROC, CLIP, CLIP_PROC
     if BLIP is None:
         BLIP_PROC = BlipProcessor.from_pretrained("Salesforce/blip-image-captioning-base")
         BLIP = BlipForConditionalGeneration.from_pretrained(
             "Salesforce/blip-image-captioning-base"
         ).to(DEVICE)
         BLIP.eval()
-    if _CLIP is None:
-        _CLIP_PROC = CLIPProcessor.from_pretrained("openai/clip-vit-base-patch32")
-        _CLIP = CLIPModel.from_pretrained("openai/clip-vit-base-patch32").to(DEVICE)
-        _CLIP.eval()
+    if CLIP is None:
+        CLIP_PROC = CLIPProcessor.from_pretrained("openai/clip-vit-base-patch32")
+        CLIP = CLIPModel.from_pretrained("openai/clip-vit-base-patch32").to(DEVICE)
+        CLIP.eval()
 
 #Category descriptions for subreddit classifications
 CATEGORY_DESCRIPTORS = {
@@ -408,8 +408,8 @@ def clip_rank(image: Image.Image, candidates: list[str], top_n: int = 10) -> lis
     load_vision_models()
     if not candidates:
         return []
-    inputs = _CLIP_PROC(text=candidates, images=image, return_tensors="pt", padding=True).to(DEVICE)
-    outputs = _CLIP(**inputs)
+    inputs = CLIP_PROC(text=candidates, images=image, return_tensors="pt", padding=True).to(DEVICE)
+    outputs = CLIP(**inputs)
     img_emb = outputs.image_embeds / outputs.image_embeds.norm(dim=-1, keepdim=True)
     txt_emb = outputs.text_embeds / outputs.text_embeds.norm(dim=-1, keepdim=True)
     #Compute similarity between the image and each candidate text

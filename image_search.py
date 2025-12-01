@@ -32,15 +32,15 @@ STOPWORDS = {
     "me","my","mine","we","our","ours","they","them","their","theirs","he","him","his","she","her","hers","i"
 }
 
-_BLIP_PROCESSOR = None
-_BLIP_MODEL = None
+BLIP_PROCESSOR = None
+BLIP_MODEL = None
 #Load BLIP captioning model
-def _load_blip():
-    global _BLIP_PROCESSOR, _BLIP_MODEL
-    if _BLIP_PROCESSOR is None or _BLIP_MODEL is None:
-        _BLIP_PROCESSOR = BlipProcessor.from_pretrained("Salesforce/blip-image-captioning-base")
-        _BLIP_MODEL = BlipForConditionalGeneration.from_pretrained("Salesforce/blip-image-captioning-base")
-    return _BLIP_PROCESSOR, _BLIP_MODEL
+def load_blip():
+    global BLIP_PROCESSOR, BLIP_MODEL
+    if BLIP_PROCESSOR is None or BLIP_MODEL is None:
+        BLIP_PROCESSOR = BlipProcessor.from_pretrained("Salesforce/blip-image-captioning-base")
+        BLIP_MODEL = BlipForConditionalGeneration.from_pretrained("Salesforce/blip-image-captioning-base")
+    return BLIP_PROCESSOR, BLIP_MODEL
 
 #Get first image URL from a Reddit gallery post
 def first_gallery_image(post):
@@ -103,7 +103,7 @@ def hot_score_from_post(post):
 #Generate a BLIP caption for an PIL (pillow) image
 def blip_caption(image):
     try:
-        processor, model = _load_blip()
+        processor, model = load_blip()
         inputs = processor(images=image, return_tensors="pt")
         out = model.generate(**inputs, max_new_tokens=30)
         return processor.decode(out[0], skip_special_tokens=True).strip()
@@ -118,12 +118,12 @@ def fetch_image(url):
     except Exception:
         return None
 
-_WORD_RE = re.compile(r"[A-Za-z0-9]+")
+WORD_REGEX = re.compile(r"[A-Za-z0-9]+")
 #Convert a caption string into short keyword string
 def caption_to_keywords(caption: str) -> str:
     if not caption:
         return ""
-    words = [w.lower() for w in _WORD_RE.findall(caption)]
+    words = [w.lower() for w in WORD_REGEX.findall(caption)]
     kept = []
     for w in words:
         if w in STOPWORDS or len(w) <= 2:
