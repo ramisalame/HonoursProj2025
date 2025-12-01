@@ -36,16 +36,17 @@ def first_gallery_image(post):
     return None
 
 
-def guess_image_url(post):
+#Extract reddit image url
+def reddit_image_url(post):
     if post.get("is_video"):
         return ""
     url = post.get("url_overridden_by_dest") or post.get("url")
     domain = post.get("domain", "")
     post_hint = post.get("post_hint", "")
-
+    #Skip non image domains 
     if any(d in domain for d in ["v.redd.it", "youtube.com", "youtu.be", "tiktok.com"]):
         return ""
-
+    #Check if it is a gallary post
     if post.get("is_gallery"):
         g = first_gallery_image(post)
         if g:
@@ -57,6 +58,7 @@ def guess_image_url(post):
     if url and any(domain.endswith(d) for d in ["i.redd.it", "i.imgur.com", "preview.redd.it"]):
         return url
 
+    #Fallback
     preview = post.get("preview", {})
     images = preview.get("images", [])
     if images:
@@ -67,7 +69,7 @@ def guess_image_url(post):
 
     return ""
 
-
+#Extract top posts of the subreddit using Reddit JSON api 
 def fetch_top_posts():
     r = requests.get(
         f"{REDDIT_BASE}/r/{SUBREDDIT}/top.json",
@@ -80,6 +82,7 @@ def fetch_top_posts():
     return [c.get("data", {}) for c in data.get("data", {}).get("children", [])]
 
 
+#Fetch reddit post data using url extracted
 def fetch_reddit_post_by_url(url: str, timeout: int = 10):
     try:
         base = url.split("?", 1)[0].rstrip("/")
@@ -106,7 +109,7 @@ def fetch_reddit_post_by_url(url: str, timeout: int = 10):
 
 
 def get_keywords_for_reddit_url(url: str, want_n: int = 6):
-
+    #Get keywords for image from reddit url
     if "reddit.com" not in (url or ""):
         return "", ""
 
@@ -114,10 +117,10 @@ def get_keywords_for_reddit_url(url: str, want_n: int = 6):
     if not post:
         return "", ""
 
-    img_link = guess_image_url(post)
+    img_link = reddit_image_url(post)
     if not img_link:
         return "", ""
-
+    #Context for image keyword clip/blip
     title = post.get("title", "") or ""
     subreddit = post.get("subreddit", "") or ""
     selftext = (post.get("selftext", "") or "")[:300]
@@ -133,6 +136,7 @@ def get_keywords_for_reddit_url(url: str, want_n: int = 6):
     return img_link, ",".join(tags)
 
 
+#Fetch reddit subreddit metadata
 def fetch_reddit_sub_about(subreddit: str, timeout=10) -> dict:
     info = {
         "display_name_prefixed": f"r/{subreddit}",
@@ -164,6 +168,7 @@ def fetch_reddit_sub_about(subreddit: str, timeout=10) -> dict:
     return info
 
 
+#Get subreddit name 
 def extract_subreddit_from_url(url: str) -> str | None:
     from urllib.parse import urlparse
 
@@ -186,6 +191,7 @@ def extract_subreddit_from_url(url: str) -> str | None:
 def _bucket_from_subscribers(subscribers: int | None) -> str:
     if subscribers is None:
         return ""
+    #Assign subreddit smaller or larger tag: smaller < 100,000
     return "smaller" if subscribers < SMALL_SUBSCRIBERS_THRESHOLD else "larger"
 
 
@@ -212,13 +218,11 @@ def enrich_with_reddit_meta(result_row: dict) -> dict:
     return result_row
 
 
-# -------------------------------------------------------------------
 # Building rows for posts with meme tags
-# -------------------------------------------------------------------
 def build_rows(posts):
     rows = []
     for p in posts:
-        image_link = guess_image_url(p)
+        image_link = reddit_image_url(p)
         if not image_link:
             continue
 
@@ -240,7 +244,7 @@ def build_rows(posts):
             print("\n[Keyword scores for]", title)
             for t, s in tag_scores:
                 print(f"  {t:35s} {s:5.2f}%")
-
+        #add rows to excel sheet
         rows.append({
             "post": p,
             "post link": urljoin(REDDIT_BASE, p.get("permalink", "")),
