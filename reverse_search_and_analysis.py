@@ -37,13 +37,15 @@ from reddit_utils import (
 # -------------------------------------------------------------------
 def make_driver():
     opts = Options()
+    #headless chrome page
     if SELENIUM_HEADLESS:
         opts.add_argument("--headless=new")
     else:
         opts.add_experimental_option("detach", True)
 
     from config import CHROME_USER_DATA_DIR, CHROME_PROFILE_DIR
-
+    
+    #local Chrome profile
     if CHROME_USER_DATA_DIR and CHROME_USER_DATA_DIR.strip():
         opts.add_argument(f"--user-data-dir={CHROME_USER_DATA_DIR}")
         if CHROME_PROFILE_DIR:
@@ -57,6 +59,7 @@ def make_driver():
 
     service = ChromeDriverManager().install()
     driver = webdriver.Chrome(service=webdriver.ChromeService(service), options=opts)
+    #page load timeout if page stops loading 
     driver.set_page_load_timeout(SELENIUM_PAGELOAD_TIMEOUT)
     return driver
 
@@ -141,7 +144,7 @@ def click_exact_tab_if_present(driver):
             continue
     return False
 
-
+#Extract target url from a given result link 
 def _extract_target_from_google_href(href: str) -> str | None:
     try:
         u = urlsplit(href)
@@ -159,6 +162,7 @@ def _extract_target_from_google_href(href: str) -> str | None:
     return None
 
 
+#Extract contents from google lens results page
 def extract_result_links_from_lens(driver, max_results=MAX_RESULTS_PER_IMAGE):
     urls = []
     try:
@@ -167,7 +171,8 @@ def extract_result_links_from_lens(driver, max_results=MAX_RESULTS_PER_IMAGE):
         )
     except TimeoutException:
         pass
-
+    
+    #Scrolls to reach end of page
     for _ in range(6):
         driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
         sleep(0.8 + random.uniform(0.0, 0.6))
@@ -175,6 +180,7 @@ def extract_result_links_from_lens(driver, max_results=MAX_RESULTS_PER_IMAGE):
     wait_for_results_or_timeout(driver, timeout_s=6)
     anchors = driver.find_elements(By.XPATH, "//a[@href]")
 
+    #Extracts only reddit links
     for a in anchors:
         href = a.get_attribute("href") or ""
         if not href:
@@ -202,7 +208,7 @@ DOMAIN_LABELS = {
     "i.redd.it": "Reddit image host",
 }
 
-
+#Classify domain into a type
 def classify_domain(url: str, fallback_title: str = "") -> str:
     try:
         host = (urlparse(url).hostname or "").lower()
@@ -216,6 +222,7 @@ def classify_domain(url: str, fallback_title: str = "") -> str:
     except Exception:
         pass
 
+    #Different website types
     title = (fallback_title or "").lower()
     if any(k in title for k in ["forum", "community", "discussion"]):
         return "Online forum/community"
@@ -230,6 +237,7 @@ def classify_domain(url: str, fallback_title: str = "") -> str:
     return "Website"
 
 
+#Fetches the title of the url
 def fetch_title_quick(url: str, timeout=10) -> str:
     try:
         r = requests.get(
@@ -242,6 +250,8 @@ def fetch_title_quick(url: str, timeout=10) -> str:
         html = r.text[:200000]
         t = BeautifulSoup(html, "lxml").find("title")
         return re.sub(r"\s+", " ", t.text).strip() if (t and t.text) else ""
+
+    #Fallback 
     except Exception:
         return ""
 
@@ -263,6 +273,7 @@ def extract_subreddit_from_url(url: str) -> str | None:
     return None
 
 
+#Runs google lens "exact search" for given original image url 
 def google_reverse_image_exact(image_url: str, driver) -> list[dict]:
     url = lens_url_for_image(image_url)
     sleep(2.0 + random.uniform(0.0, 1.0))
@@ -276,21 +287,24 @@ def google_reverse_image_exact(image_url: str, driver) -> list[dict]:
             driver.get(url)
         except Exception:
             return []
-
+    #Wait to let lens load the page with the image
     sleep(SELENIUM_WAIT_S + random.uniform(0.2, 0.8))
     wait_for_results_or_timeout(driver, timeout_s=12)
 
+    #Wait for user to solve captcha 
     if is_captcha_screen(driver) and not has_any_result_links(driver):
         if not wait_for_captcha_clear(driver, max_wait_s=300):
             return []
         sleep(1.0)
 
+    #Click on exact tab 
     try:
         click_exact_tab_if_present(driver)
         sleep(SELENIUM_WAIT_S)
     except Exception:
         pass
 
+    #Scroll to bottom of page
     for _ in range(6):
         driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
         sleep(0.8 + random.uniform(0.0, 0.6))
@@ -360,6 +374,7 @@ def write_top_sheet(df_out: pd.DataFrame, path: str):
         df_out.to_excel(writer, index=False, sheet_name="r_memes_top5")
 
 
+#Write to the excel file with search results 
 def append_reverse_sheet(reverse_rows: list[dict], path: str):
     df_rev = pd.DataFrame(reverse_rows).rename(columns={
         "original_image_link": "original image link",
@@ -407,6 +422,7 @@ def append_reverse_sheet(reverse_rows: list[dict], path: str):
         df_rev.to_excel(writer, index=False, sheet_name="reverse_search")
 
 
+#Analyze meme stats based off data
 def analyze_meme_popularity(df_out: pd.DataFrame):
     if "image keywords" not in df_out.columns:
         print("No 'image keywords' column found")
@@ -432,7 +448,7 @@ def analyze_meme_popularity(df_out: pd.DataFrame):
         return
 
     df_long = pd.DataFrame(records)
-
+    #Stats at category level
     cat_stats = (
         df_long
         .groupby("category", as_index=False)
@@ -473,6 +489,7 @@ def analyze_meme_popularity(df_out: pd.DataFrame):
     print(tag_stats.head(10).to_string(index=False, float_format=lambda x: f"{x:0.2f}"))
     print("========================================\n")
 
+    #average upvotes by category bar chart 
     plt.figure(figsize=(10, 6))
     plt.bar(cat_stats["category"], cat_stats["mean_upvotes"])
     plt.xlabel("Meme Category")
@@ -484,10 +501,8 @@ def analyze_meme_popularity(df_out: pd.DataFrame):
 
 
 def analyze_small_community_keywords(reverse_rows: list[dict], top_n: int = 15):
-    """
-    Look at reverse search results and find which meme tags
-    (match_image_keywords) show up in smaller communities
-    """
+   
+    #Reverse search results and find which meme tags (match_image_keywords) show up in smaller communities
     if not reverse_rows:
         print("No reverse search rows")
         return
@@ -520,7 +535,7 @@ def analyze_small_community_keywords(reverse_rows: list[dict], top_n: int = 15):
         return
 
     df_small = pd.DataFrame(records)
-
+    # Count of how often each tag appears in small communities
     tag_counts = (
         df_small
         .groupby("tag", as_index=False)
@@ -534,7 +549,7 @@ def analyze_small_community_keywords(reverse_rows: list[dict], top_n: int = 15):
     print("=====================================================\n")
 
     top = tag_counts.head(top_n)
-
+    # Plot top tags by in smaller communities
     plt.figure(figsize=(10, 6))
     plt.bar(top["tag"], top["count"])
     plt.xlabel("Meme keyword tag")

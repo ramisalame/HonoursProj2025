@@ -14,6 +14,7 @@ LIMIT = 50
 TIMEFRAME = "day"   
 OUTPUT_XLSX = "memes_top50.xlsx"
 
+#Header for reddit API request
 HEADERS = {
     "User-Agent": "script:memes-top50:v2.1 (by u/rami)"
 }
@@ -21,7 +22,8 @@ HEADERS = {
 REDDIT_EPOCH = 1134028003
 VIRAL_PERCENTILE = 80
 
-_STOPWORDS = {
+#Stopwords for keyword extraction from captions
+STOPWORDS = {
     "a","an","the","and","or","but","if","while","with","without","on","in","at","to","from","by","for","of",
     "is","are","was","were","be","been","being","it","its","this","that","these","those","as","into","over",
     "about","above","below","up","down","off","out","again","further","then","once","here","there","when",
@@ -32,7 +34,7 @@ _STOPWORDS = {
 
 _BLIP_PROCESSOR = None
 _BLIP_MODEL = None
-
+#Load BLIP captioning model
 def _load_blip():
     global _BLIP_PROCESSOR, _BLIP_MODEL
     if _BLIP_PROCESSOR is None or _BLIP_MODEL is None:
@@ -40,6 +42,7 @@ def _load_blip():
         _BLIP_MODEL = BlipForConditionalGeneration.from_pretrained("Salesforce/blip-image-captioning-base")
     return _BLIP_PROCESSOR, _BLIP_MODEL
 
+#Get first image URL from a Reddit gallery post
 def first_gallery_image(post):
     media = post.get("media_metadata", {})
     order = post.get("gallery_data", {}).get("items", [])
@@ -53,7 +56,8 @@ def first_gallery_image(post):
             return url.replace("&amp;", "&")
     return None
 
-def guess_image_url(post):
+#Guess a usable image URL from a Reddit post
+def reddit_image_url_post(post):
     if post.get("is_video"):
         return ""
     url = post.get("url_overridden_by_dest") or post.get("url")
@@ -78,6 +82,7 @@ def guess_image_url(post):
             return src["url"].replace("&amp;", "&")
     return ""
 
+#Fetch top posts from subreddit using Reddit JSON API
 def fetch_top_posts():
     url = f"{REDDIT_BASE}/r/{SUBREDDIT}/top.json"
     params = {"limit": LIMIT, "t": TIMEFRAME}
@@ -86,6 +91,7 @@ def fetch_top_posts():
     data = r.json()
     return [c.get("data", {}) for c in data.get("data", {}).get("children", [])]
 
+#Compute hot score for a post
 def hot_score_from_post(post):
     score = post.get("score", post.get("ups", 0))
     created = post.get("created_utc", 0)
@@ -94,6 +100,7 @@ def hot_score_from_post(post):
     seconds = created - REDDIT_EPOCH
     return order + s * (seconds / 45000.0)
 
+#Generate a BLIP caption for an PIL (pillow) image
 def blip_caption(image):
     try:
         processor, model = _load_blip()
@@ -102,7 +109,7 @@ def blip_caption(image):
         return processor.decode(out[0], skip_special_tokens=True).strip()
     except Exception:
         return ""
-
+#Download image from URL and return as PIL.Image
 def fetch_image(url):
     try:
         resp = requests.get(url, headers=HEADERS, timeout=20)
@@ -112,14 +119,14 @@ def fetch_image(url):
         return None
 
 _WORD_RE = re.compile(r"[A-Za-z0-9]+")
-
+#Convert a caption string into short keyword string
 def caption_to_keywords(caption: str) -> str:
     if not caption:
         return ""
     words = [w.lower() for w in _WORD_RE.findall(caption)]
     kept = []
     for w in words:
-        if w in _STOPWORDS or len(w) <= 2:
+        if w in STOPWORDS or len(w) <= 2:
             continue
         if w not in kept:
             kept.append(w)
@@ -134,15 +141,17 @@ def extract_image_keywords(image_url: str) -> str:
     caption = blip_caption(img)
     return caption_to_keywords(caption)
 
+#Build table rows in excel sheet for image data
 def build_rows(posts):
     rows = []
     for p in posts:
-        image_link = guess_image_url(p)
+        image_link = reddit_image_url_post(p)
         if not image_link:
             continue
         hot = hot_score_from_post(p)
         keywords = extract_image_keywords(image_link)
         rows.append({
+            #Image details
             "post link": urljoin(REDDIT_BASE, p.get("permalink", "")),
             "image link": image_link,
             "# of upvotes": p.get("ups", 0),
@@ -162,9 +171,11 @@ def main():
     cutoff = np.percentile(df["hot"], VIRAL_PERCENTILE)
     df["viral"] = np.where(df["hot"] >= cutoff, "YES", "NO")
     df_out = df[[
+        #output columns for excel sheet
         "post link", "image link", "# of upvotes", "# of comments",
         "image keywords", "viral"
     ]]
+    #Writes to excel file
     with pd.ExcelWriter(OUTPUT_XLSX, engine="xlsxwriter") as writer:
         df_out.to_excel(writer, index=False, sheet_name="r_memes_top50")
     print(f"Wrote {len(df_out)} image posts to {OUTPUT_XLSX}")

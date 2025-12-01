@@ -18,8 +18,10 @@ from sentence_transformers import SentenceTransformer
 from config import HEADERS
 
 # -------------------------------------------------------------------
-# text helpers
+# text helpers & NLP utilities
 # -------------------------------------------------------------------
+
+#Stopwords to ignore when building keywords
 STOPWORDS = {
     "a","an","and","the","or","but","if","then","else","when","while","for","to","of","in","on","at","by","with",
     "from","about","as","is","am","are","was","were","be","been","being","it","its","this","that","these","those",
@@ -28,6 +30,8 @@ STOPWORDS = {
     "into","out","off","up","down","over","under","again","once","ever","never","always","also","too","not","no","yes",
     "ok","okay","gt","lt","amp","etc","are","were","your","you","me","my","our","we","they","them","their","i"
 }
+
+#Regex for tokenization
 TOKEN_RE = re.compile(r"[A-Za-z0-9][A-Za-z0-9\-']{1,}")
 
 
@@ -35,12 +39,14 @@ def tokenize(text: str):
     return [m.group(0) for m in TOKEN_RE.finditer(text or "")]
 
 
+#Normalize tokens (lowercase, remove some characters, collapse repeated letters)
 def normalize_token(tok: str) -> str:
     t = tok.lower().strip("-' ")
     return re.sub(r"(.)\1{2,}", r"\1\1", t)
 
 
-def dedupe_preserve_order(seq):
+#Remove duplicates 
+def remove_duplicates(seq):
     seen, out = set(), []
     for x in seq:
         if x not in seen:
@@ -52,28 +58,30 @@ def dedupe_preserve_order(seq):
 # -------------------------------------------------------------------
 # BLIP + CLIP + SentenceTransformer
 # -------------------------------------------------------------------
-_DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
-_BLIP = _BLIP_PROC = _CLIP = _CLIP_PROC = None
+#Use gpu for processing if available, otherwise CPU
+DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
+BLIP = BLIP_PROC = _CLIP = _CLIP_PROC = None
 
-_SENT_EMB_MODEL = None
-_CAT_EMB = None  # for subreddit categories
-_CANONICAL_EMB = None  # for generalized meme tags
+SENT_EMB_MODEL = None
+CAT_EMB = None  # for subreddit categories
+CANONICAL_EMB = None  # for generalized meme tags
 
 
+#Load blip/clip models for image processing
 def load_vision_models():
-    global _BLIP, _BLIP_PROC, _CLIP, _CLIP_PROC
-    if _BLIP is None:
-        _BLIP_PROC = BlipProcessor.from_pretrained("Salesforce/blip-image-captioning-base")
-        _BLIP = BlipForConditionalGeneration.from_pretrained(
+    global BLIP, BLIP_PROC, _CLIP, _CLIP_PROC
+    if BLIP is None:
+        BLIP_PROC = BlipProcessor.from_pretrained("Salesforce/blip-image-captioning-base")
+        BLIP = BlipForConditionalGeneration.from_pretrained(
             "Salesforce/blip-image-captioning-base"
-        ).to(_DEVICE)
-        _BLIP.eval()
+        ).to(DEVICE)
+        BLIP.eval()
     if _CLIP is None:
         _CLIP_PROC = CLIPProcessor.from_pretrained("openai/clip-vit-base-patch32")
-        _CLIP = CLIPModel.from_pretrained("openai/clip-vit-base-patch32").to(_DEVICE)
+        _CLIP = CLIPModel.from_pretrained("openai/clip-vit-base-patch32").to(DEVICE)
         _CLIP.eval()
 
-
+#Category descriptions for subreddit classifications
 CATEGORY_DESCRIPTORS = {
     "political":  "elections, public policy, governments, politicians, geopolitics",
     "humor":      "funny content, jokes, memes, comedy, satire",
@@ -166,77 +174,80 @@ MEME_TAGS = [
 
 MEME_DESCRIPTIONS = [
     # Self-Deprecating 
-    "memes where the creator mocks their own flaws or failures; self-deprecating humour",
-    "memes about messing up, not being good enough, or personal incompetence",
-    "memes about being socially awkward, embarrassing oneself, or cringe behaviour",
-    "memes about burnout, feeling drained, or being exhausted with life",
+    "memes where the creator mocks their own flaws or failures; self-deprecating humour (e.g., joking about ‘me trying to be productive and immediately taking a nap’)",
+    "memes about messing up, not being good enough, or personal incompetence (like comparing yourself to a computer that keeps crashing)",
+    "memes about being socially awkward, embarrassing oneself, or cringe behaviour (such as rehearsing a greeting and still saying the wrong thing)",
+    "memes about burnout, feeling drained, or being exhausted with life (like using a low-battery icon to describe your energy)",
 
     # Doomer / Reactionary 
-    "memes critical of society, systems, or culture; anti-societal sentiment",
-    "memes predicting catastrophe, societal collapse, or pessimistic futures",
-    "memes mocking extreme or overly negative doomer attitudes",
-    "memes reacting to online trends, formats, genres, or commentary culture",
+    "memes critical of society, systems, or culture; anti-societal sentiment (e.g., someone staring out a window saying ‘everything is broken’)",
+    "memes predicting catastrophe, societal collapse, or pessimistic futures (like joking that ‘it’s 2030 and I still haven’t fixed my sleep schedule’)",
+    "memes mocking extreme or overly negative doomer attitudes (such as calling a tiny inconvenience ‘the downfall of civilization’)",
+    "memes reacting to online trends, formats, genres, or commentary culture (e.g., eye-rolling at yet another TikTok clone trend)",
 
     # Hobby / Niche 
-    "memes tied to a specific hobby such as coding, cars, music, etc.",
-    "memes requiring knowledge of a specific fandom, show, or game",
-    "memes only understood by people in certain jobs, majors, or workplaces",
-    "memes relying on technical or internet-lore knowledge",
+    "memes tied to a specific hobby such as coding, cars, music, etc. (like ‘fix one bug, create three more’ for programmers)",
+    "memes requiring knowledge of a specific fandom, show, or game (such as inside jokes only anime or Marvel fans would get)",
+    "memes only understood by people in certain jobs, majors, or workplaces (e.g., scientists joking about peer review pain)",
+    "memes relying on technical or internet-lore knowledge (like referencing the classic ‘GPU go brrr’ meme)",
 
     # Relatable 
-    "memes framed as relatable personal stories or everyday experiences",
-    "memes expressing moods, vibes, or emotional relatability",
-    "memes about daily frustrations, minor inconveniences, or small struggles",
-    "memes about friendships, relationships, dating, or social dynamics",
+    "memes framed as relatable personal stories or everyday experiences (e.g., checking the fridge 3 times expecting new food)",
+    "memes expressing moods, vibes, or emotional relatability (like someone wrapped in blankets labelled ‘today’s energy’)",
+    "memes about daily frustrations, minor inconveniences, or small struggles (such as dropping your phone on your face in bed)",
+    "memes about friendships, relationships, dating, or social dynamics (e.g., the friend who just walks into your house and eats your snacks)",
 
     # Misc / Meta 
-    "memes referencing specific media, creators, or internet trends",
-    "memes built on surreal, bizarre, or abstract humour",
-    "memes intentionally low-effort, chaotic, or nonsense for comedic effect",
-    "memes about meme formats, meme history, or meta-meme commentary",
+    "memes referencing specific media, creators, or internet trends (like joking about the narrator voice from documentary TikToks)",
+    "memes built on surreal, bizarre, or abstract humour (e.g., a floating banana with no explanation)",
+    "memes intentionally low-effort, chaotic, or nonsense for comedic effect (such as blurry screenshots with random text)",
+    "memes about meme formats, meme history, or meta-meme commentary (like complaining that the ‘Distracted Boyfriend’ format won’t die)",
 
     # Geographic 
-    "memes about national or regional identity, cultural differences, or geography",
-    "memes tied to specific cities, neighbourhoods, or local in-jokes",
-    "memes contrasting global north vs south, rich vs poor countries",
-    "memes playing on stereotypes of different regions or locales",
+    "memes about national or regional identity, cultural differences, or geography (e.g., roasting your country’s unpredictable weather)",
+    "memes tied to specific cities, neighbourhoods, or local in-jokes (like ‘Toronto traffic ages me 5 years’)",
+    "memes contrasting global north vs south, rich vs poor countries (such as exaggerated split-screen comparisons)",
+    "memes playing on stereotypes of different regions or locales (e.g., Americans reacting to the word ‘kilometres’)",
 
     # Stereotype 
-    "memes using national or ethnic stereotypes as the basis of the joke",
-    "memes about gender expectations or stereotypical male/female behaviour",
-    "memes about class, jobs, professions, or workplace stereotypes",
-    "memes based on stereotypes of age groups such as boomers or zoomers",
+    "memes using national or ethnic stereotypes as the basis of the joke (like someone bragging that spicy food is ‘nothing’)",
+    "memes about gender expectations or stereotypical male/female behaviour (e.g., guys refusing to ask for directions)",
+    "memes about class, jobs, professions, or workplace stereotypes (such as ‘this meeting could’ve been an email’)",
+    "memes based on stereotypes of age groups such as boomers or zoomers (e.g., boomers calling every console ‘the Nintendo’)",
 
     # Political 
-    "memes about domestic elections, politicians, or political debates",
-    "memes referencing geopolitics, foreign policy, or global conflicts",
-    "memes about ideological clashes such as left vs right politics",
-    "memes joking about public policy issues or government decisions",
+    "memes about domestic elections, politicians, or political debates (like checking polls as if they’re sports scores)",
+    "memes referencing geopolitics, foreign policy, or global conflicts (such as simplified maps with dramatic labels)",
+    "memes about ideological clashes such as left vs right politics (e.g., stick figures screaming over basic facts)",
+    "memes joking about public policy issues or government decisions (like ‘budget cuts removed the floor’)",
 
     # Animal 
-    "memes using cute or wholesome animals for feel-good humour",
-    "memes about chaotic, silly, or mischievous behaviour of pets",
-    "memes where animals are given human roles or emotions",
-    "memes using animals as reaction images or emotional expressions",
+    "memes using cute or wholesome animals for feel-good humour (e.g., a puppy labelled ‘emotional support chaos’)",
+    "memes about chaotic, silly, or mischievous behaviour of pets (like a cat knocking something over for no reason)",
+    "memes where animals are given human roles or emotions (such as a dog at a desk titled ‘first day at work’)",
+    "memes using animals as reaction images or emotional expressions (e.g., an owl representing pure confusion)",
 
     # Cultural / Historical 
-    "memes referencing historical events, wars, or major past eras",
-    "memes placing historical figures in modern-day situations",
-    "memes about traditions, customs, or heritage-related humour",
-    "memes comparing historical norms to modern behaviour or lifestyles",
+    "memes referencing historical events, wars, or major past eras (like Romans dramatically reacting to small problems)",
+    "memes placing historical figures in modern-day situations (such as Napoleon using an iPad)",
+    "memes about traditions, customs, or heritage-related humour (e.g., comparing holiday rituals across families)",
+    "memes comparing historical norms to modern behaviour or lifestyles (like medieval peasants discovering Wi-Fi)",
 
     # Pop Culture 
-    "memes referencing movies, shows, cinematic universes, or scenes",
-    "memes involving celebrities, musicians, stan culture, or drama",
-    "memes tied to anime, manga, or large fandom communities",
-    "memes referencing games, gaming culture, or gaming characters",
+    "memes referencing movies, shows, cinematic universes, or scenes (e.g., using a Thanos quote to describe chores)",
+    "memes involving celebrities, musicians, stan culture, or drama (such as fans overreacting to a tiny announcement)",
+    "memes tied to anime, manga, or large fandom communities (like referencing over-the-top power-up tropes)",
+    "memes referencing games, gaming culture, or gaming characters (e.g., respawning after an embarrassing death)",
 
     # Cultural Memes 
-    "memes about cultural conflicts, identity debates, or social issues",
-    "memes commenting on internet culture, platforms, and trends",
-    "memes about cultural misunderstandings or translation failures",
-    "memes about people who are extremely online or terminally online",
+    "memes about cultural conflicts, identity debates, or social issues (such as two characters arguing over slang)",
+    "memes commenting on internet culture, platforms, and trends (e.g., ‘Twitter at 3am’ starting pointless fights)",
+    "memes about cultural misunderstandings or translation failures (like misreading signs abroad in funny ways)",
+    "memes about people who are extremely online or terminally online (such as obsessing over follower counts)",
 ]
+
+
+
 
 
 TAG_CATEGORY = {
@@ -314,21 +325,23 @@ TAG_CATEGORY = {
 }
 
 
-
+#Load sentencetransformer for categories and meme tags
 def _load_text_model():
-    global _SENT_EMB_MODEL, _CAT_EMB, _CANONICAL_EMB
-    if _SENT_EMB_MODEL is None:
-        _SENT_EMB_MODEL = SentenceTransformer("sentence-transformers/all-MiniLM-L6-v2")
+    global SENT_EMB_MODEL, CAT_EMB, CANONICAL_EMB
+    if SENT_EMB_MODEL is None:
+        SENT_EMB_MODEL = SentenceTransformer("sentence-transformers/all-MiniLM-L6-v2")
 
+        #Encode embeddings for each category description
         cat_texts = [f"{k}: {v}" for k, v in CATEGORY_DESCRIPTORS.items()]
-        _CAT_EMB = _SENT_EMB_MODEL.encode(cat_texts, normalize_embeddings=True)
+        CAT_EMB = SENT_EMB_MODEL.encode(cat_texts, normalize_embeddings=True)
 
-        _CANONICAL_EMB = _SENT_EMB_MODEL.encode(
+        #Compute embeddings for each meme description
+        CANONICAL_EMB = SENT_EMB_MODEL.encode(
             MEME_DESCRIPTIONS,
             normalize_embeddings=True
         )
 
-
+#Download images and adjust if needed
 def fetch_image(url: str):
     try:
         resp = requests.get(url, headers=HEADERS, timeout=20)
@@ -342,12 +355,13 @@ def fetch_image(url: str):
         print(f"[warn] Failed to fetch image: {e}")
         return None
 
-
+#Generate blip captions for an image
 @torch.no_grad()
 def blip_captions(img: Image.Image, n_return: int = 5) -> list[str]:
     load_vision_models()
-    inputs = _BLIP_PROC(images=img, text=None, return_tensors="pt").to(_DEVICE)
-    outputs = _BLIP.generate(
+    inputs = BLIP_PROC(images=img, text=None, return_tensors="pt").to(DEVICE)
+    #BLIP settings 
+    outputs = BLIP.generate(
         **inputs,
         do_sample=True,
         top_k=50,
@@ -357,22 +371,25 @@ def blip_captions(img: Image.Image, n_return: int = 5) -> list[str]:
         max_new_tokens=32,
         repetition_penalty=1.1,
     )
-    caps = _BLIP_PROC.batch_decode(outputs, skip_special_tokens=True)
+    caps = BLIP_PROC.batch_decode(outputs, skip_special_tokens=True)
     cleaned = []
     for c in caps:
         c = re.sub(r"\s+", " ", c).strip(" .,!?:;\"'()[]{}")
         if c:
             cleaned.append(c)
-    return dedupe_preserve_order(cleaned)
+    #Remove dups 
+    return remove_duplicates(cleaned)
 
-
-def harvest_candidates_from_captions(captions: list[str]) -> list[str]:
+#Extract unigrams and bigram candidates from BLIP
+def uni_and_bigram_from_captions(captions: list[str]) -> list[str]:
     uni = []
     bi = []
+    #Tokenize captions
     for c in captions:
         toks = [normalize_token(t) for t in tokenize(c)]
         toks = [t for t in toks if len(t) >= 3 and t not in STOPWORDS and not t.isdigit()]
         uni.extend(toks)
+        #Build bigram 
         for i in range(len(toks) - 1):
             if toks[i] != toks[i + 1]:
                 bi.append(f"{toks[i]} {toks[i+1]}")
@@ -385,19 +402,23 @@ def harvest_candidates_from_captions(captions: list[str]) -> list[str]:
     return [w for w, _ in cand_scores.most_common(50)]
 
 
+# CLIP ranking text by similarity to image
 @torch.no_grad()
 def clip_rank(image: Image.Image, candidates: list[str], top_n: int = 10) -> list[str]:
     load_vision_models()
     if not candidates:
         return []
-    inputs = _CLIP_PROC(text=candidates, images=image, return_tensors="pt", padding=True).to(_DEVICE)
+    inputs = _CLIP_PROC(text=candidates, images=image, return_tensors="pt", padding=True).to(DEVICE)
     outputs = _CLIP(**inputs)
     img_emb = outputs.image_embeds / outputs.image_embeds.norm(dim=-1, keepdim=True)
     txt_emb = outputs.text_embeds / outputs.text_embeds.norm(dim=-1, keepdim=True)
+    #Compute similarity between the image and each candidate text
     sim = (img_emb @ txt_emb.t()).squeeze(0)
+
+    #Select indices for top_n most similar candidates
     idxs = torch.topk(sim, k=min(top_n, len(candidates))).indices.tolist()
     ranked = [candidates[i] for i in idxs]
-
+    
     flat = []
     for kw in ranked:
         if " " in kw:
@@ -407,9 +428,10 @@ def clip_rank(image: Image.Image, candidates: list[str], top_n: int = 10) -> lis
             flat.append(kw)
     flat = [normalize_token(t) for t in flat]
     flat = [t for t in flat if t and t not in STOPWORDS]
-    return dedupe_preserve_order(flat)[:top_n]
+    return remove_duplicates(flat)[:top_n]
 
 
+#Map keywords to meme tags
 def generalize_keywords(
     raw_keywords: list[str],
     texts_for_context: list[str],
@@ -422,7 +444,7 @@ def generalize_keywords(
 
     if not raw_keywords and not texts_for_context:
         return []
-
+    #Combine captions and keywords into one document string
     doc_parts = []
     if texts_for_context:
         doc_parts.extend(texts_for_context)
@@ -432,15 +454,15 @@ def generalize_keywords(
     doc_text = " ".join(doc_parts)
     if not doc_text.strip():
         return []
-
-    doc_emb = _SENT_EMB_MODEL.encode([doc_text], normalize_embeddings=True)
-    sims = (doc_emb @ _CANONICAL_EMB.T).ravel()
+    #Compare to meme descriptions
+    doc_emb = SENT_EMB_MODEL.encode([doc_text], normalize_embeddings=True)
+    sims = (doc_emb @ CANONICAL_EMB.T).ravel()
     idxs = np.argsort(-sims)
 
     picked: list[tuple[str, float]] = []
     used = set()
 
-   
+    #Checks min_sim threshold 
     for idx in idxs:
         sim = float(sims[idx])
         if sim < min_sim:
@@ -453,7 +475,7 @@ def generalize_keywords(
         if len(picked) >= want_n:
             break
 
-    
+    #Fallback if not enough keywords for 6 
     if len(picked) < want_n:
         for idx in idxs:
             label = MEME_TAGS[idx].strip().lower()
@@ -475,6 +497,7 @@ def generalize_keywords(
     return [label for label, _ in picked]
 
 
+#Keyword extraction
 def extract_image_keywords_with_scores(
     image_url: str,
     want_n: int = 6,
@@ -493,7 +516,9 @@ def extract_image_keywords_with_scores(
         else:
             caps_with_context = caps
 
-        cands = harvest_candidates_from_captions(caps_with_context)
+        cands = uni_and_bigram_from_captions(caps_with_context)
+
+        #CLIP ranking of keywords from captions
         raw_keywords = clip_rank(img, cands, top_n=want_n * 3)
 
         tag_scores = generalize_keywords(
@@ -520,8 +545,8 @@ def extract_image_keywords(
     tags, _ = extract_image_keywords_with_scores(image_url, want_n=want_n, context_text=context_text)
     return tags
 
-
-def _normalize_subreddit_name(name: str) -> str:
+#Subreddit classification
+def normalize_subreddit_name(name: str) -> str:
     n = re.sub(r"[_\-]+", " ", name or "")
     n = re.sub(r"(?<=\D)(\d+)", r" \1 ", n)
     n = re.sub(r"\s+", " ", n).strip()
@@ -533,16 +558,17 @@ def classify_subreddit_theme(sub_name: str, title: str = "", desc: str = "") -> 
 
     _load_text_model()
     pieces = [
-        _normalize_subreddit_name(sub_name or ""),
+        normalize_subreddit_name(sub_name or ""),
         title or "",
         desc or "",
     ]
     text = " | ".join([p for p in pieces if p]).strip()
     if not text:
         return "other"
-
-    sub_emb = _SENT_EMB_MODEL.encode([text], normalize_embeddings=True)
-    sims = (sub_emb @ _CAT_EMB.T).ravel()
+    
+    #Similarity to CATEGORY_DESCRIPTORS
+    sub_emb = SENT_EMB_MODEL.encode([text], normalize_embeddings=True)
+    sims = (sub_emb @ CAT_EMB.T).ravel()
     labels = list(CATEGORY_DESCRIPTORS.keys())
     best_idx = int(np.argmax(sims))
     best_label = labels[best_idx]
@@ -553,6 +579,7 @@ def classify_subreddit_theme(sub_name: str, title: str = "", desc: str = "") -> 
 
     text_lower = f"{(sub_name or '').lower()} {(title or '').lower()} {(desc or '').lower()}"
 
+    #Fallback 
     if any(k in text_lower for k in ["politic", "trump", "biden", "democrat", "republican",
                                      "election", "government", "congress", "policy"]):
         return "political"
@@ -585,6 +612,7 @@ def classify_subreddit_theme(sub_name: str, title: str = "", desc: str = "") -> 
         "hiphop","hip-hop","rap","rnb","r&b","rock","metal","punk","indie","pop","kpop","k-pop","edm","electronic",
         "house","techno","trance","dubstep","jazz","classical","opera","folk","country","reggae","afrobeats","latin"
     ]
+    #Remove non-alphanumeric characters
     name_hint = re.sub(r"[^a-z0-9]+", "", (sub_name or "").lower())
     if any(t in text_lower for t in music_terms) or any(t in name_hint for t in [
         "music","theweeknd","taylorswift","drake","kanyewest","arcticmonkeys","radiohead","metallica",
