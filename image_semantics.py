@@ -174,80 +174,77 @@ MEME_TAGS = [
 
 MEME_DESCRIPTIONS = [
     # Self-Deprecating 
-    "memes where the creator mocks their own flaws or failures; self-deprecating humour (e.g., joking about ‘me trying to be productive and immediately taking a nap’)",
-    "memes about messing up, not being good enough, or personal incompetence (like comparing yourself to a computer that keeps crashing)",
-    "memes about being socially awkward, embarrassing oneself, or cringe behaviour (such as rehearsing a greeting and still saying the wrong thing)",
-    "memes about burnout, feeling drained, or being exhausted with life (like using a low-battery icon to describe your energy)",
+    "memes where the creator mocks their own flaws or failures; self-deprecating humour",
+    "memes about messing up, not being good enough, or personal incompetence",
+    "memes about being socially awkward, embarrassing oneself, or cringe behaviour",
+    "memes about burnout, feeling drained, or being exhausted with life",
 
     # Doomer / Reactionary 
-    "memes critical of society, systems, or culture; anti-societal sentiment (e.g., someone staring out a window saying ‘everything is broken’)",
-    "memes predicting catastrophe, societal collapse, or pessimistic futures (like joking that ‘it’s 2030 and I still haven’t fixed my sleep schedule’)",
-    "memes mocking extreme or overly negative doomer attitudes (such as calling a tiny inconvenience ‘the downfall of civilization’)",
-    "memes reacting to online trends, formats, genres, or commentary culture (e.g., eye-rolling at yet another TikTok clone trend)",
+    "memes critical of society, systems, or culture; anti-societal sentiment",
+    "memes predicting catastrophe, societal collapse, or pessimistic futures",
+    "memes mocking extreme or overly negative doomer attitudes",
+    "memes reacting to online trends, formats, genres, or commentary culture",
 
     # Hobby / Niche 
-    "memes tied to a specific hobby such as coding, cars, music, etc. (like ‘fix one bug, create three more’ for programmers)",
-    "memes requiring knowledge of a specific fandom, show, or game (such as inside jokes only anime or Marvel fans would get)",
-    "memes only understood by people in certain jobs, majors, or workplaces (e.g., scientists joking about peer review pain)",
-    "memes relying on technical or internet-lore knowledge (like referencing the classic ‘GPU go brrr’ meme)",
+    "memes tied to a specific hobby such as coding, cars, music, etc.",
+    "memes requiring knowledge of a specific fandom, show, or game",
+    "memes only understood by people in certain jobs, majors, or workplaces",
+    "memes relying on technical or internet-lore knowledge",
 
     # Relatable 
-    "memes framed as relatable personal stories or everyday experiences (e.g., checking the fridge 3 times expecting new food)",
-    "memes expressing moods, vibes, or emotional relatability (like someone wrapped in blankets labelled ‘today’s energy’)",
-    "memes about daily frustrations, minor inconveniences, or small struggles (such as dropping your phone on your face in bed)",
-    "memes about friendships, relationships, dating, or social dynamics (e.g., the friend who just walks into your house and eats your snacks)",
+    "memes framed as relatable personal stories or everyday experiences",
+    "memes expressing moods, vibes, or emotional relatability",
+    "memes about daily frustrations, minor inconveniences, or small struggles",
+    "memes about friendships, relationships, dating, or social dynamics",
 
     # Misc / Meta 
-    "memes referencing specific media, creators, or internet trends (like joking about the narrator voice from documentary TikToks)",
-    "memes built on surreal, bizarre, or abstract humour (e.g., a floating banana with no explanation)",
-    "memes intentionally low-effort, chaotic, or nonsense for comedic effect (such as blurry screenshots with random text)",
-    "memes about meme formats, meme history, or meta-meme commentary (like complaining that the ‘Distracted Boyfriend’ format won’t die)",
+    "memes referencing specific media, creators, or internet trends",
+    "memes built on surreal, bizarre, or abstract humour",
+    "memes intentionally low-effort, chaotic, or nonsense for comedic effect",
+    "memes about meme formats, meme history, or meta-meme commentary",
 
     # Geographic 
-    "memes about national or regional identity, cultural differences, or geography (e.g., roasting your country’s unpredictable weather)",
-    "memes tied to specific cities, neighbourhoods, or local in-jokes (like ‘Toronto traffic ages me 5 years’)",
-    "memes contrasting global north vs south, rich vs poor countries (such as exaggerated split-screen comparisons)",
-    "memes playing on stereotypes of different regions or locales (e.g., Americans reacting to the word ‘kilometres’)",
+    "memes about national or regional identity, cultural differences, or geography",
+    "memes tied to specific cities, neighbourhoods, or local in-jokes",
+    "memes contrasting global north vs south, rich vs poor countries",
+    "memes playing on stereotypes of different regions or locales",
 
     # Stereotype 
-    "memes using national or ethnic stereotypes as the basis of the joke (like someone bragging that spicy food is ‘nothing’)",
-    "memes about gender expectations or stereotypical male/female behaviour (e.g., guys refusing to ask for directions)",
-    "memes about class, jobs, professions, or workplace stereotypes (such as ‘this meeting could’ve been an email’)",
-    "memes based on stereotypes of age groups such as boomers or zoomers (e.g., boomers calling every console ‘the Nintendo’)",
+    "memes using national or ethnic stereotypes as the basis of the joke",
+    "memes about gender expectations or stereotypical male/female behaviour",
+    "memes about class, jobs, professions, or workplace stereotypes",
+    "memes based on stereotypes of age groups such as boomers or zoomers",
 
     # Political 
-    "memes about domestic elections, politicians, or political debates (like checking polls as if they’re sports scores)",
-    "memes referencing geopolitics, foreign policy, or global conflicts (such as simplified maps with dramatic labels)",
-    "memes about ideological clashes such as left vs right politics (e.g., stick figures screaming over basic facts)",
-    "memes joking about public policy issues or government decisions (like ‘budget cuts removed the floor’)",
+    "memes about domestic elections, politicians, or political debates",
+    "memes referencing geopolitics, foreign policy, or global conflicts",
+    "memes about ideological clashes such as left vs right politics",
+    "memes joking about public policy issues or government decisions",
 
     # Animal 
-    "memes using cute or wholesome animals for feel-good humour (e.g., a puppy labelled ‘emotional support chaos’)",
-    "memes about chaotic, silly, or mischievous behaviour of pets (like a cat knocking something over for no reason)",
-    "memes where animals are given human roles or emotions (such as a dog at a desk titled ‘first day at work’)",
-    "memes using animals as reaction images or emotional expressions (e.g., an owl representing pure confusion)",
+    "memes using cute or wholesome animals for feel-good humour",
+    "memes about chaotic, silly, or mischievous behaviour of pets",
+    "memes where animals are given human roles or emotions",
+    "memes using animals as reaction images or emotional expressions",
 
     # Cultural / Historical 
-    "memes referencing historical events, wars, or major past eras (like Romans dramatically reacting to small problems)",
-    "memes placing historical figures in modern-day situations (such as Napoleon using an iPad)",
-    "memes about traditions, customs, or heritage-related humour (e.g., comparing holiday rituals across families)",
-    "memes comparing historical norms to modern behaviour or lifestyles (like medieval peasants discovering Wi-Fi)",
+    "memes referencing historical events, wars, or major past eras",
+    "memes placing historical figures in modern-day situations",
+    "memes about traditions, customs, or heritage-related humour",
+    "memes comparing historical norms to modern behaviour or lifestyles",
 
     # Pop Culture 
-    "memes referencing movies, shows, cinematic universes, or scenes (e.g., using a Thanos quote to describe chores)",
-    "memes involving celebrities, musicians, stan culture, or drama (such as fans overreacting to a tiny announcement)",
-    "memes tied to anime, manga, or large fandom communities (like referencing over-the-top power-up tropes)",
-    "memes referencing games, gaming culture, or gaming characters (e.g., respawning after an embarrassing death)",
+    "memes referencing movies, shows, cinematic universes, or scenes",
+    "memes involving celebrities, musicians, stan culture, or drama",
+    "memes tied to anime, manga, or large fandom communities",
+    "memes referencing games, gaming culture, or gaming characters",
 
     # Cultural Memes 
-    "memes about cultural conflicts, identity debates, or social issues (such as two characters arguing over slang)",
-    "memes commenting on internet culture, platforms, and trends (e.g., ‘Twitter at 3am’ starting pointless fights)",
-    "memes about cultural misunderstandings or translation failures (like misreading signs abroad in funny ways)",
-    "memes about people who are extremely online or terminally online (such as obsessing over follower counts)",
+    "memes about cultural conflicts, identity debates, or social issues",
+    "memes commenting on internet culture, platforms, and trends",
+    "memes about cultural misunderstandings or translation failures",
+    "memes about people who are extremely online or terminally online",
 ]
-
-
-
 
 
 TAG_CATEGORY = {
@@ -268,6 +265,7 @@ TAG_CATEGORY = {
     "fandom in-joke": "hobby / niche",
     "work or school niche meme": "hobby / niche",
     "internet niche meme": "hobby / niche",
+
 
     # Relatable
     "personal stories and situations": "relatable",
@@ -323,6 +321,8 @@ TAG_CATEGORY = {
     "cross-cultural misunderstanding": "cultural memes",
     "chronically online behaviour": "cultural memes",
 }
+
+
 
 
 #Load sentencetransformer for categories and meme tags
