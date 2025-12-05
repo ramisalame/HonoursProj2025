@@ -126,7 +126,7 @@ def wait_for_captcha_clear(driver, max_wait_s=300):
 
 
 #Click exact match filter tab in google reverse search if available
-def click_exact_tab_if_present(driver):
+def click_exact_tab(driver):
     candidates = [
         (By.XPATH, "//span[text()='Exact']"),
         (By.XPATH, "//span[contains(., 'Exact')]"),
@@ -299,7 +299,7 @@ def google_reverse_image_exact(image_url: str, driver) -> list[dict]:
 
     #Click on exact tab 
     try:
-        click_exact_tab_if_present(driver)
+        click_exact_tab(driver)
         sleep(SELENIUM_WAIT_S)
     except Exception:
         pass
