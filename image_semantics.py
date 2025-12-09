@@ -404,7 +404,7 @@ def uni_and_bigram_from_captions(captions: list[str]) -> list[str]:
     for t in bi:
         cand_scores[t] += 1.25 + 0.1 * sum(len(w) for w in t.split())
 
-    #returns the topp 50 highest scoring unigrams (one word) and bigrams (two words), bigrams are weighted slightly more
+    #returns the top 50 highest scoring unigrams (one word) and bigrams (two words), bigrams are weighted slightly more
     return [w for w, _ in cand_scores.most_common(50)]
 
 

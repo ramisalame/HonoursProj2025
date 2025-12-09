@@ -29,11 +29,16 @@ def main():
     if not rows:
         print("No image posts found.")
         return
-
+    #Build dataframe 
     df = pd.DataFrame(rows)
+
+    #Compute the viral cutoff based on the configured percentile over the 'hot' score
     cutoff = np.percentile(df["hot"], VIRAL_PERCENTILE)
+    
+    #Flag posts as viral / non-viral
     df["viral"] = np.where(df["hot"] >= cutoff, "YES", "NO")
 
+    #main output sheet columns
     df_out = df[[
         "post link",
         "image link",
@@ -50,7 +55,8 @@ def main():
     try:
         driver = make_driver()
         reverse_rows = []
-
+        
+        # For each meme image, run a Google Lens exact match search
         for image_link in tqdm(df_out["image link"].tolist(), desc="Reverse searching"):
             try:
                 results = google_reverse_image_exact(image_link, driver)
@@ -60,7 +66,7 @@ def main():
             except Exception as e:
                 print(f"[warn] Reverse search failed for {image_link}: {e}")
                 results = []
-
+            #fallback
             if not results:
                 reverse_rows.append({
                     "original image link": image_link,
@@ -78,7 +84,7 @@ def main():
                 import random as _rnd
                 sleep(1.0 + _rnd.uniform(0.0, 0.8))
                 continue
-
+            #add successful reverse search results into excel row
             for r in results:
                 reverse_rows.append({
                     "original image link": image_link,
@@ -93,10 +99,13 @@ def main():
                     "match_image_keywords": r.get("match_image_keywords", ""),
                 })
 
+            #Sleep
             from config import sleep
             import random as _rnd
             sleep(2.5 + _rnd.uniform(0.0, 1.2))
 
+
+        #summarize whether original image is mostly in larger or smaller communities
         tendency_map = summarize_size_tendencies(reverse_rows)
         df_out["where similar posts appear (community size)"] = df_out["image link"].map(
             tendency_map
@@ -105,7 +114,10 @@ def main():
         write_top_sheet(df_out, OUTPUT_XLSX)
         append_reverse_sheet(reverse_rows, OUTPUT_XLSX)
 
+        #print and plot meme category and tag stats
         analyze_meme_popularity(df_out)
+
+        #print and ploot which tags show up in smaller communities 
         analyze_small_community_keywords(reverse_rows)
 
     finally:
