@@ -275,11 +275,18 @@ def extract_subreddit_from_url(url: str) -> str | None:
 
 #Runs google lens "exact search" for given original image url 
 def google_reverse_image_exact(image_url: str, driver) -> list[dict]:
+
+    #google lens "upload by url"
     url = lens_url_for_image(image_url)
+
+    #random sleep
     sleep(2.0 + random.uniform(0.0, 1.0))
+
+    
     from selenium.common.exceptions import TimeoutException as SeleniumTimeout
 
     try:
+        #open lens url 
         driver.get(url)
     except SeleniumTimeout:
         sleep(2.0 + random.uniform(0.0, 1.0))
@@ -314,7 +321,10 @@ def google_reverse_image_exact(image_url: str, driver) -> list[dict]:
 
     out = []
     for link in links:
+        #fetch title of result page
         title = fetch_title_of_url(link)
+
+        #classify domain
         label = classify_domain(link, fallback_title=title)
 
         match_image_link = ""
@@ -330,6 +340,8 @@ def google_reverse_image_exact(image_url: str, driver) -> list[dict]:
             "match_image_link": match_image_link,
             "match_image_keywords": match_image_keywords,
         }
+
+        #subreddit metadata subname, subscribers, subs count)
         row = enrich_with_reddit_meta(row)
         out.append(row)
     return out

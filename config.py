@@ -6,13 +6,17 @@ REDDIT_BASE = "https://www.reddit.com"
 SUBREDDIT = "memes"
 LIMIT = 50
 TIMEFRAME = "day"
+
+#output excel file for results
 OUTPUT_XLSX = "memes_top5.xlsx"
 
 HEADERS = {
     "User-Agent": "script:memes-top5: (by u/rami)"
 }
 
+#fixed epoch reddit hot algorithm
 REDDIT_EPOCH = 1134028003
+
 VIRAL_PERCENTILE = 80
 MAX_IMAGES = 5
 SMALL_SUBSCRIBERS_THRESHOLD = 100_000
@@ -34,7 +38,7 @@ CHROME_PROFILE_DIR = ""
 def sleep(t: float) -> None:
     time.sleep(t)
 
-
+#computes hot score for a reddit post 
 def hot_score_from_post(post: dict) -> float:
     score = post.get("score", post.get("ups", 0))
     created = post.get("created_utc", 0)

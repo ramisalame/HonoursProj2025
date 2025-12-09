@@ -62,9 +62,9 @@ def remove_duplicates(seq):
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 BLIP = BLIP_PROC = CLIP = CLIP_PROC = None
 
-SENT_EMB_MODEL = None
-CAT_EMB = None  # for subreddit categories
-CANONICAL_EMB = None  # for generalized meme tags
+SENT_EMB_MODEL = None # sentencetransformer model
+CAT_EMB = None  # embeddings for subreddit categories
+CANONICAL_EMB = None  # embeddings for generalized meme tags
 
 
 #Load blip/clip models for image processing
@@ -335,7 +335,7 @@ def _load_text_model():
         cat_texts = [f"{k}: {v}" for k, v in CATEGORY_DESCRIPTORS.items()]
         CAT_EMB = SENT_EMB_MODEL.encode(cat_texts, normalize_embeddings=True)
 
-        #Compute embeddings for each meme description
+        #Compute embeddings for each meme description and encode meme description texts
         CANONICAL_EMB = SENT_EMB_MODEL.encode(
             MEME_DESCRIPTIONS,
             normalize_embeddings=True
@@ -384,21 +384,27 @@ def blip_captions(img: Image.Image, n_return: int = 5) -> list[str]:
 def uni_and_bigram_from_captions(captions: list[str]) -> list[str]:
     uni = []
     bi = []
-    #Tokenize captions
+    #Loop through each caption string and tokenize captions
     for c in captions:
         toks = [normalize_token(t) for t in tokenize(c)]
         toks = [t for t in toks if len(t) >= 3 and t not in STOPWORDS and not t.isdigit()]
+
+        #add valid tokens to unigram list
         uni.extend(toks)
         #Build bigram 
         for i in range(len(toks) - 1):
             if toks[i] != toks[i + 1]:
                 bi.append(f"{toks[i]} {toks[i+1]}")
 
+    #assign unigram and bigram scores
+    #assigned base value + extra for each character
     cand_scores = Counter()
     for t in uni:
         cand_scores[t] += 1.0 + 0.15 * len(t)
     for t in bi:
         cand_scores[t] += 1.25 + 0.1 * sum(len(w) for w in t.split())
+
+    #returns the topp 50 highest scoring unigrams (one word) and bigrams (two words), bigrams are weighted slightly more
     return [w for w, _ in cand_scores.most_common(50)]
 
 
@@ -406,8 +412,12 @@ def uni_and_bigram_from_captions(captions: list[str]) -> list[str]:
 @torch.no_grad()
 def clip_rank(image: Image.Image, candidates: list[str], top_n: int = 10) -> list[str]:
     load_vision_models()
+
+    #check if none
     if not candidates:
         return []
+
+    #encode both image and candidate text with CLIP, normalize text and image
     inputs = CLIP_PROC(text=candidates, images=image, return_tensors="pt", padding=True).to(DEVICE)
     outputs = CLIP(**inputs)
     img_emb = outputs.image_embeds / outputs.image_embeds.norm(dim=-1, keepdim=True)
@@ -418,7 +428,8 @@ def clip_rank(image: Image.Image, candidates: list[str], top_n: int = 10) -> lis
     #Select indices for top_n most similar candidates
     idxs = torch.topk(sim, k=min(top_n, len(candidates))).indices.tolist()
     ranked = [candidates[i] for i in idxs]
-    
+
+    #only keep individual words, and filter out stopwords / short tokens
     flat = []
     for kw in ranked:
         if " " in kw:
@@ -426,8 +437,12 @@ def clip_rank(image: Image.Image, candidates: list[str], top_n: int = 10) -> lis
             flat.extend(parts)
         else:
             flat.append(kw)
+
+    #Normalize all tokens 
     flat = [normalize_token(t) for t in flat]
     flat = [t for t in flat if t and t not in STOPWORDS]
+
+    #remove duplicate words, and return top n
     return remove_duplicates(flat)[:top_n]
 
 
