@@ -368,9 +368,9 @@ def _summarize_size_tendency(rows_for_image: list[dict]) -> str:
 
 
 def summarize_size_tendencies(reverse_rows: list[dict]) -> dict:
-    """
-    Build a mapping: original image link -> 'mostly smaller' / 'mostly larger' / 'mixed' / 'unknown'
-    """
+    
+    #Build a mapping of'mostly smaller' / 'mostly larger' / 'mixed' / 'unknown'
+
     tendency_map = {}
     by_image = {}
     for row in reverse_rows:
