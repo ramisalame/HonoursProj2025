@@ -18,7 +18,7 @@ from sentence_transformers import SentenceTransformer
 from config import HEADERS
 
 # -------------------------------------------------------------------
-# text helpers & NLP utilities
+# Text helpers & NLP utilities
 # -------------------------------------------------------------------
 
 #Stopwords to ignore when building keywords
@@ -413,11 +413,11 @@ def uni_and_bigram_from_captions(captions: list[str]) -> list[str]:
 def clip_rank(image: Image.Image, candidates: list[str], top_n: int = 10) -> list[str]:
     load_vision_models()
 
-    #check if none
+    #Check if none
     if not candidates:
         return []
 
-    #encode both image and candidate text with CLIP, normalize text and image
+    #Encode both image and candidate text with CLIP, normalize text and image
     inputs = CLIP_PROC(text=candidates, images=image, return_tensors="pt", padding=True).to(DEVICE)
     outputs = CLIP(**inputs)
     img_emb = outputs.image_embeds / outputs.image_embeds.norm(dim=-1, keepdim=True)
@@ -429,7 +429,7 @@ def clip_rank(image: Image.Image, candidates: list[str], top_n: int = 10) -> lis
     idxs = torch.topk(sim, k=min(top_n, len(candidates))).indices.tolist()
     ranked = [candidates[i] for i in idxs]
 
-    #only keep individual words, and filter out stopwords / short tokens
+    #Only keep individual words, and filter out stopwords / short tokens
     flat = []
     for kw in ranked:
         if " " in kw:

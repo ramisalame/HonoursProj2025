@@ -29,7 +29,7 @@ def first_gallery_image(post):
     order = post.get("gallery_data", {}).get("items", [])
     if not media or not order:
         return None
-    #take first image from gallary
+    #Take first image from gallary
     for item in order:
         meta = media.get(item.get("media_id", ""), {})
         src = meta.get("s", {})
@@ -42,7 +42,7 @@ def first_gallery_image(post):
 #Extract reddit image url
 def reddit_image_url(post):
 
-    #ignore video posts
+    #Ignore video posts
     if post.get("is_video"):
         return ""
     url = post.get("url_overridden_by_dest") or post.get("url")
@@ -231,7 +231,7 @@ def enrich_with_reddit_meta(result_row: dict) -> dict:
 def build_rows(posts):
     rows = []
 
-    #skip if not an image post
+    #Skip if not an image post
     for p in posts:
         image_link = reddit_image_url(p)
         if not image_link:
@@ -245,7 +245,7 @@ def build_rows(posts):
 
         context = f"subreddit r/{subreddit}. title: {title}. text: {selftext}"
 
-        #get data about image from CLIP/BLIP
+        #Get data about image from CLIP/BLIP
         tags, tag_scores = extract_image_keywords_with_scores(
             image_link,
             want_n=6,
@@ -256,7 +256,7 @@ def build_rows(posts):
             print("\n[Keyword scores for]", title)
             for t, s in tag_scores:
                 print(f"  {t:35s} {s:5.2f}%")
-        #add rows to excel sheet
+        #Add rows to excel sheet
         rows.append({
             "post": p,
             "post link": urljoin(REDDIT_BASE, p.get("permalink", "")),

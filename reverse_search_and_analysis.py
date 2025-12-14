@@ -37,7 +37,7 @@ from reddit_utils import (
 # -------------------------------------------------------------------
 def make_driver():
     opts = Options()
-    #headless chrome page
+    #Headless chrome page
     if SELENIUM_HEADLESS:
         opts.add_argument("--headless=new")
     else:
@@ -45,7 +45,7 @@ def make_driver():
 
     from config import CHROME_USER_DATA_DIR, CHROME_PROFILE_DIR
     
-    #local Chrome profile
+    #Local Chrome profile
     if CHROME_USER_DATA_DIR and CHROME_USER_DATA_DIR.strip():
         opts.add_argument(f"--user-data-dir={CHROME_USER_DATA_DIR}")
         if CHROME_PROFILE_DIR:
@@ -321,10 +321,10 @@ def google_reverse_image_exact(image_url: str, driver) -> list[dict]:
 
     out = []
     for link in links:
-        #fetch title of result page
+        #Fetch title of result page
         title = fetch_title_of_url(link)
 
-        #classify domain
+        #Classify domain
         label = classify_domain(link, fallback_title=title)
 
         match_image_link = ""

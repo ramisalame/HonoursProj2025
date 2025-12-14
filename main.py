@@ -84,7 +84,7 @@ def main():
                 import random as _rnd
                 sleep(1.0 + _rnd.uniform(0.0, 0.8))
                 continue
-            #add successful reverse search results into excel row
+            #Add successful reverse search results into excel row
             for r in results:
                 reverse_rows.append({
                     "original image link": image_link,
@@ -105,7 +105,7 @@ def main():
             sleep(2.5 + _rnd.uniform(0.0, 1.2))
 
 
-        #summarize whether original image is mostly in larger or smaller communities
+        #Summarize whether original image is mostly in larger or smaller communities
         tendency_map = summarize_size_tendencies(reverse_rows)
         df_out["where similar posts appear (community size)"] = df_out["image link"].map(
             tendency_map
@@ -114,10 +114,10 @@ def main():
         write_top_sheet(df_out, OUTPUT_XLSX)
         append_reverse_sheet(reverse_rows, OUTPUT_XLSX)
 
-        #print and plot meme category and tag stats
+        #Print and plot meme category and tag stats
         analyze_meme_popularity(df_out)
 
-        #print and ploot which tags show up in smaller communities 
+        #Print and ploot which tags show up in smaller communities 
         analyze_small_community_keywords(reverse_rows)
 
     finally:
