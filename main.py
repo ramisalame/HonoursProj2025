@@ -117,7 +117,7 @@ def main():
         #Print and plot meme category and tag stats
         analyze_meme_popularity(df_out)
 
-        #Print and ploot which tags show up in smaller communities 
+        #Print and plot which tags show up in smaller communities 
         analyze_small_community_keywords(reverse_rows)
 
     finally:
